@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:assignment_app/core/services/theme_service.dart';
+import 'package:assignment_app/core/constants/app_route.dart';
 
 class LoginController extends GetxController {
   final ThemeService _themeService;
@@ -21,5 +22,6 @@ class LoginController extends GetxController {
   void login() {
     // Implement login logic here
     print('Login with: ${username.value}, ${password.value}');
+    Get.offAllNamed(AppRoutes.storefrontScreen);
   }
 }

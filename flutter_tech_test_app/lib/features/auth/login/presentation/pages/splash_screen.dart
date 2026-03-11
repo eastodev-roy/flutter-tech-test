@@ -1,3 +1,4 @@
+import 'package:assignment_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:assignment_app/core/constants/app_route.dart';
@@ -13,12 +14,18 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToLogin();
+    _navigateToNext();
   }
 
-  void _navigateToLogin() async {
+  void _navigateToNext() async {
     await Future.delayed(const Duration(seconds: 2));
-    Get.offAllNamed(AppRoutes.loginScreen);
+    final authController = Get.find<AuthController>();
+
+    if (authController.isAuthenticated) {
+      Get.offAllNamed(AppRoutes.storefrontScreen);
+    } else {
+      Get.offAllNamed(AppRoutes.loginScreen);
+    }
   }
 
   @override
@@ -45,10 +52,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Assignment App',
-              style: Get.textTheme.headlineMedium,
-            ),
+            Text('Assignment App', style: Get.textTheme.headlineMedium),
             const SizedBox(height: 16),
             const CircularProgressIndicator(),
           ],
