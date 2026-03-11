@@ -12,6 +12,7 @@ class HomeScreenController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxBool isMoreLoading = false.obs;
   final RxString errorMessage = ''.obs;
+  final RxString searchQuery = ''.obs;
 
   final int _limit = 10;
   int _skip = 0;
@@ -22,6 +23,9 @@ class HomeScreenController extends GetxController {
     super.onInit();
     loadProducts();
     scrollController.addListener(_scrollListener);
+    
+    // Setup search debounce
+    debounce(searchQuery, (_) => loadProducts(isRefresh: true), time: const Duration(milliseconds: 500));
   }
 
   @override
@@ -52,12 +56,22 @@ class HomeScreenController extends GetxController {
     errorMessage.value = '';
 
     try {
+      final String url;
+      final Map<String, dynamic> queryParams = {
+        'limit': _limit,
+        'skip': _skip,
+      };
+
+      if (searchQuery.value.isEmpty) {
+        url = 'https://dummyjson.com/products';
+      } else {
+        url = 'https://dummyjson.com/products/search';
+        queryParams['q'] = searchQuery.value;
+      }
+
       final response = await _dio.get(
-        'https://dummyjson.com/products',
-        queryParameters: {
-          'limit': _limit,
-          'skip': _skip,
-        },
+        url,
+        queryParameters: queryParams,
       );
 
       if (response.statusCode == 200) {

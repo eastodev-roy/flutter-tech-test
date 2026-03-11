@@ -23,36 +23,38 @@ class HomeScreen extends GetView<HomeScreenController> {
           if (index == 2) title = 'Settings';
           return Text(
             title,
-            style: Get.textTheme.headlineMedium?.copyWith(fontSize: 20.sp),
+            style: Get.textTheme.headlineMedium?.copyWith(
+              fontSize: 20.sp,
+              fontWeight: FontWeight.w600,
+            ),
           );
         }),
         actions: [
-          Obx(() {
-            final index = controller.selectedIndex.value;
-            if (index == 2) return const SizedBox.shrink();
-            return IconButton(
-              icon: Icon(
-                index == 1
-                    ? Icons.search
-                    : (Get.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-              ),
-              onPressed: () {
-                if (index != 1) {
-                  Get.find<ThemeService>().switchTheme();
-                }
-              },
-            );
-          }),
+          IconButton(
+            icon: Icon(
+              Get.isDarkMode
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
+              color: Get.theme.colorScheme.primary,
+            ),
+            onPressed: () => Get.find<ThemeService>().switchTheme(),
+          ),
           SizedBox(width: 8.w),
         ],
       ),
       body: Column(
         children: [
-          Obx(
-            () => controller.selectedIndex.value == 0
-                ? _buildSearchBar()
-                : const SizedBox.shrink(),
-          ),
+          Obx(() {
+            final index = controller.selectedIndex.value;
+            if (index != 0) return const SizedBox.shrink();
+
+            return _buildSearchBar(
+              hintText: 'Search products...',
+              onChanged: (val) {
+                controller.searchQuery.value = val;
+              },
+            );
+          }),
           Expanded(
             child: Obx(() {
               if (controller.selectedIndex.value == 0) {
@@ -69,29 +71,45 @@ class HomeScreen extends GetView<HomeScreenController> {
       bottomNavigationBar: Obx(
         () => CustomBottomNavbar(
           selectedIndex: controller.selectedIndex.value,
-          onItemSelected: controller.changeTabIndex,
+          onItemSelected: (index) {
+            controller.changeTabIndex(index);
+            // Optional: reset search when changing tabs
+          },
         ),
       ),
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar({
+    required String hintText,
+    required Function(String) onChanged,
+  }) {
     return Padding(
-      padding: EdgeInsets.all(16.r),
+      padding: EdgeInsets.fromLTRB(16.r, 0, 16.r, 16.r),
       child: Container(
         decoration: BoxDecoration(
           color: Get.theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Get.theme.dividerColor.withOpacity(0.1)),
+          borderRadius: BorderRadius.circular(16.r),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: TextField(
+          onChanged: onChanged,
           decoration: InputDecoration(
-            hintText: 'Search products...',
-            prefixIcon: const Icon(Icons.search),
+            hintText: hintText,
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: Get.theme.colorScheme.primary,
+            ),
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(vertical: 12.h),
+            contentPadding: EdgeInsets.symmetric(vertical: 14.h),
           ),
         ),
       ),

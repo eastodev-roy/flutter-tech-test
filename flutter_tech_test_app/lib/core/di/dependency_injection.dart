@@ -22,7 +22,7 @@ class DependencyInjection {
 
     // Controllers
     Get.lazyPut<LoginController>(() => LoginController(Get.find<ThemeService>()), fenix: true);
-    Get.lazyPut<AuthController>(() => AuthController(Get.find<AuthRepository>()), fenix: true);
+    Get.lazyPut<AuthController>(() => AuthController(Get.find<AuthRepository>(), Get.find<CacheService>()), fenix: true);
     Get.lazyPut<PostController>(() => PostController(Get.find<PostRepository>()), fenix: true);
     Get.lazyPut<HomeScreenController>(() => HomeScreenController(), fenix: true); 
   }

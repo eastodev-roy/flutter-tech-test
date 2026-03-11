@@ -15,10 +15,16 @@ class PostController extends GetxController {
   final RxInt skip = 0.obs;
   final int limit = 10;
 
+  final RxString searchQuery = ''.obs;
+
   @override
   void onInit() {
     super.onInit();
+    // Fetch initial posts
     fetchPosts();
+    
+    // Setup search listener with debounce
+    debounce(searchQuery, (_) => fetchPosts(), time: const Duration(milliseconds: 500));
   }
 
   Future<void> fetchPosts() async {
@@ -27,7 +33,12 @@ class PostController extends GetxController {
       errorMessage.value = '';
       skip.value = 0;
       
-      final response = await _postRepository.getPosts(limit: limit, skip: skip.value);
+      final PostResponse response;
+      if (searchQuery.value.isEmpty) {
+        response = await _postRepository.getPosts(limit: limit, skip: skip.value);
+      } else {
+        response = await _postRepository.searchPosts(searchQuery.value, limit: limit, skip: skip.value);
+      }
       
       posts.assignAll(response.posts);
       totalPosts.value = response.total;
@@ -45,16 +56,24 @@ class PostController extends GetxController {
       isPaginationLoading.value = true;
       skip.value += limit;
 
-      final response = await _postRepository.getPosts(limit: limit, skip: skip.value);
+      final PostResponse response;
+      if (searchQuery.value.isEmpty) {
+        response = await _postRepository.getPosts(limit: limit, skip: skip.value);
+      } else {
+        response = await _postRepository.searchPosts(searchQuery.value, limit: limit, skip: skip.value);
+      }
       
       posts.addAll(response.posts);
     } catch (e) {
-      // For pagination, we might just show a snackbar instead of blocking the whole UI
       Get.snackbar('Error', 'Failed to load more posts');
-      skip.value -= limit; // Revert skip on failure
+      skip.value -= limit;
     } finally {
       isPaginationLoading.value = false;
     }
+  }
+
+  void onSearchChanged(String query) {
+    searchQuery.value = query;
   }
 
   Future<void> refreshPosts() async {
@@ -62,4 +81,12 @@ class PostController extends GetxController {
   }
 
   bool get hasMore => posts.length < totalPosts.value;
+
+  List<Post> get featuredPosts => posts.where((p) => p.reactions > 10).toList();
+  
+  List<Post> get recentPosts {
+    final list = List<Post>.from(posts);
+    list.sort((a, b) => b.id.compareTo(a.id));
+    return list;
+  }
 }

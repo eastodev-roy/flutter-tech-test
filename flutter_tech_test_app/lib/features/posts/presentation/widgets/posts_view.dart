@@ -1,3 +1,4 @@
+import 'package:assignment_app/features/posts/data/models/post_model.dart';
 import 'package:assignment_app/features/posts/presentation/controllers/post_controller.dart';
 import 'package:assignment_app/features/posts/presentation/widgets/post_card.dart';
 import 'package:flutter/material.dart';
@@ -57,8 +58,8 @@ class _PostsViewState extends State<PostsView> with SingleTickerProviderStateMix
             controller: _tabController,
             children: [
               _buildPostList(),
-              const Center(child: Text('Featured Posts')),
-              const Center(child: Text('Recent Posts')),
+              _buildSpecifiedPostList(controller.featuredPosts, 'No featured posts found.'),
+              _buildSpecifiedPostList(controller.recentPosts, 'No recent posts found.'),
             ],
           ),
         ),
@@ -128,5 +129,31 @@ class _PostsViewState extends State<PostsView> with SingleTickerProviderStateMix
         ],
       ),
     );
+  }
+
+  Widget _buildSpecifiedPostList(List<Post> postList, String emptyMessage) {
+    return Obx(() {
+      if (controller.isLoading.value && postList.isEmpty) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (postList.isEmpty) {
+        return Center(child: Text(emptyMessage));
+      }
+
+      return ListView.builder(
+        padding: EdgeInsets.all(16.r),
+        itemCount: postList.length,
+        itemBuilder: (context, index) {
+          final post = postList[index];
+          return PostCard(
+            post: post,
+            onTap: () {
+              Get.toNamed('/post_detail', arguments: post);
+            },
+          );
+        },
+      );
+    });
   }
 }

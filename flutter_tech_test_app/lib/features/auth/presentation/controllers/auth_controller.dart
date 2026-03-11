@@ -1,21 +1,21 @@
-import 'dart:convert';
 import 'package:assignment_app/core/constants/app_route.dart';
+import 'package:assignment_app/core/services/cache_service.dart';
 import 'package:assignment_app/features/auth/data/models/user_model.dart';
 import 'package:assignment_app/features/auth/data/repository/auth_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthController extends GetxController {
   final AuthRepository _authRepository;
+  final CacheService _cacheService;
 
-  AuthController(this._authRepository);
+  AuthController(this._authRepository, this._cacheService);
 
   final Rxn<User> user = Rxn<User>();
   final RxBool isLoading = false.obs;
   final RxString errorMessage = ''.obs;
 
-  static const String _userKey = 'auth_user';
-  static const String _localUsersKey = 'local_users'; // Stores Map<username, userDataWithPassword>
+  static const String _userKey = 'current_user_session';
 
   @override
   void onInit() {
@@ -23,50 +23,54 @@ class AuthController extends GetxController {
     _loadUserFromStorage();
   }
 
-  Future<void> _loadUserFromStorage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userJson = prefs.getString(_userKey);
-    if (userJson != null) {
-      user.value = User.fromJson(jsonDecode(userJson));
+  void _loadUserFromStorage() {
+    try {
+      final sessionUser = _cacheService.authBox.get(_userKey);
+      if (sessionUser != null) {
+        user.value = sessionUser;
+      }
+    } catch (e) {
+      debugPrint('Error loading user session from Hive: $e');
     }
   }
 
   Future<void> _saveUserToStorage(User userData) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_userKey, jsonEncode(userData.toJson()));
+    await _cacheService.authBox.put(_userKey, userData);
   }
 
-  Future<void> login(String username, String password) async {
+  Future<void> login(String usernameOrEmail, String password) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
 
-      // Check local storage first (for mock users from signup)
-      final prefs = await SharedPreferences.getInstance();
-      final localUsersJson = prefs.getString(_localUsersKey);
-      if (localUsersJson != null) {
-        final Map<String, dynamic> localUsers = jsonDecode(localUsersJson);
-        if (localUsers.containsKey(username)) {
-          final userData = localUsers[username];
-          if (userData['password'] == password) {
-            final loggedInUser = User.fromJson(userData);
-            user.value = loggedInUser;
-            await _saveUserToStorage(loggedInUser);
-            Get.offAllNamed(AppRoutes.storefrontScreen);
-            return;
-          }
+      final normalizedInput = usernameOrEmail.trim().toLowerCase();
+
+      // Check local Hive users database first (for mock users from signup)
+      final localUserMap = _cacheService.usersBox.get(normalizedInput);
+      
+      if (localUserMap != null) {
+        if (localUserMap['password'] == password) {
+          final loggedInUser = User.fromJson(Map<String, dynamic>.from(localUserMap));
+          user.value = loggedInUser;
+          await _saveUserToStorage(loggedInUser);
+          Get.offAllNamed(AppRoutes.storefrontScreen);
+          return;
+        } else {
+          errorMessage.value = 'Invalid password';
+          Get.snackbar('Login Failed', 'The password you entered is incorrect.');
+          return;
         }
       }
 
       // If not in local storage, try API
-      final loggedInUser = await _authRepository.login(username, password);
+      final loggedInUser = await _authRepository.login(usernameOrEmail, password);
       user.value = loggedInUser;
       await _saveUserToStorage(loggedInUser);
 
       Get.offAllNamed(AppRoutes.storefrontScreen);
     } catch (e) {
       errorMessage.value = e.toString();
-      Get.snackbar('Error', errorMessage.value);
+      Get.snackbar('Error', 'Invalid credentials or connection error');
     } finally {
       isLoading.value = false;
     }
@@ -79,23 +83,19 @@ class AuthController extends GetxController {
 
       final signedUpUser = await _authRepository.signup(userData);
       
-      // Save user locally so they can log in (since API is mock)
-      final prefs = await SharedPreferences.getInstance();
-      final localUsersJson = prefs.getString(_localUsersKey) ?? '{}';
-      final Map<String, dynamic> localUsers = jsonDecode(localUsersJson);
-      
-      // Store user data + password for local login simulation
+      // Save user to local Hive users database so they can log in
       final localUserData = signedUpUser.toJson();
       localUserData['password'] = userData['password'];
-      localUsers[signedUpUser.username] = localUserData;
       
-      await prefs.setString(_localUsersKey, jsonEncode(localUsers));
+      // Store by both username and email for easy lookup
+      await _cacheService.usersBox.put(signedUpUser.username.toLowerCase(), localUserData);
+      await _cacheService.usersBox.put(signedUpUser.email.toLowerCase(), localUserData);
 
       Get.snackbar('Success', 'Account created! You can now login.');
       Get.offAllNamed(AppRoutes.loginScreen);
     } catch (e) {
       errorMessage.value = e.toString();
-      Get.snackbar('Error', errorMessage.value);
+      Get.snackbar('Error', 'Signup failed: ${e.toString()}');
     } finally {
       isLoading.value = false;
     }
@@ -115,8 +115,7 @@ class AuthController extends GetxController {
   }
 
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_userKey);
+    await _cacheService.authBox.delete(_userKey);
     user.value = null;
     Get.offAllNamed(AppRoutes.loginScreen);
   }

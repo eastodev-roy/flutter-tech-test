@@ -1,3 +1,4 @@
+import 'package:assignment_app/features/posts/data/models/post_model.dart';
 import 'package:assignment_app/features/posts/presentation/controllers/post_controller.dart';
 import 'package:assignment_app/features/posts/presentation/widgets/post_card.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +12,8 @@ class PostsPage extends StatefulWidget {
   State<PostsPage> createState() => _PostsPageState();
 }
 
-class _PostsPageState extends State<PostsPage> with SingleTickerProviderStateMixin {
+class _PostsPageState extends State<PostsPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final PostController controller = Get.find<PostController>();
   final ScrollController _scrollController = ScrollController();
@@ -24,7 +26,8 @@ class _PostsPageState extends State<PostsPage> with SingleTickerProviderStateMix
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.8) {
       controller.loadMore();
     }
   }
@@ -39,46 +42,58 @@ class _PostsPageState extends State<PostsPage> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {},
-        ),
-        title: const Text('Posts'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorSize: TabBarIndicatorSize.label,
-          tabs: const [
-            Tab(text: 'All Posts'),
-            Tab(text: 'Featured'),
-            Tab(text: 'Recent'),
-          ],
-        ),
-      ),
       body: TabBarView(
         controller: _tabController,
         children: [
           _buildPostList(),
-          const Center(child: Text('Featured Posts')),
-          const Center(child: Text('Recent Posts')),
+          _buildSpecifiedPostList(controller.featuredPosts, 'No featured posts found.'),
+          _buildSpecifiedPostList(controller.recentPosts, 'No recent posts found.'),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 1, // Posts tab
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_bag_outlined), label: 'PRODUCTS'),
-          BottomNavigationBarItem(icon: Icon(Icons.article_outlined), label: 'POSTS'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: 'SETTINGS'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_bag_outlined),
+            label: 'PRODUCTS',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.article_outlined),
+            label: 'POSTS',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: 'SETTINGS',
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildSpecifiedPostList(List<Post> postList, String emptyMessage) {
+    return Obx(() {
+      if (controller.isLoading.value && postList.isEmpty) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (postList.isEmpty) {
+        return Center(child: Text(emptyMessage));
+      }
+
+      return ListView.builder(
+        padding: EdgeInsets.all(16.r),
+        itemCount: postList.length,
+        itemBuilder: (context, index) {
+          final post = postList[index];
+          return PostCard(
+            post: post,
+            onTap: () {
+              Get.toNamed('/post_detail', arguments: post);
+            },
+          );
+        },
+      );
+    });
   }
 
   Widget _buildPostList() {

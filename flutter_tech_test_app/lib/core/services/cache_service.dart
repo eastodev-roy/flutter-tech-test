@@ -1,3 +1,4 @@
+import 'package:assignment_app/features/auth/data/models/user_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class CacheService {
@@ -6,11 +7,24 @@ class CacheService {
   CacheService._internal();
 
   static const String _boxName = 'appCache';
+  static const String authBoxName = 'authCache';
+  static const String usersBoxName = 'usersCache';
+
   Box? _box;
+  Box<User>? _authBox;
+  Box<Map>? _usersBox;
 
   Future<void> init() async {
     await Hive.initFlutter();
+
+    // Register Adapters
+    if (!Hive.isAdapterRegistered(UserAdapter().typeId)) {
+      Hive.registerAdapter(UserAdapter());
+    }
+
     _box = await Hive.openBox(_boxName);
+    _authBox = await Hive.openBox<User>(authBoxName);
+    _usersBox = await Hive.openBox<Map>(usersBoxName);
   }
 
   Box get box {
@@ -19,6 +33,9 @@ class CacheService {
     }
     return _box!;
   }
+
+  Box<User> get authBox => _authBox!;
+  Box<Map> get usersBox => _usersBox!;
 
   Future<void> put(String key, dynamic value) async {
     await box.put(key, value);

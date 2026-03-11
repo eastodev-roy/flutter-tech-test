@@ -29,4 +29,20 @@ class PostRepository {
       rethrow;
     }
   }
+
+  Future<PostResponse> searchPosts(String query, {int limit = 10, int skip = 0}) async {
+    try {
+      final response = await _apiService.get(
+        'https://dummyjson.com/posts/search',
+        queryParameters: {
+          'q': query,
+          'limit': limit,
+          'skip': skip,
+        },
+      );
+      return PostResponse.fromJson(response.data);
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
